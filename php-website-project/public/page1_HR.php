@@ -3,6 +3,12 @@
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $uploadDir = 'uploads/';
+    
+    // Ensure upload directory exists
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    
     $uploadFile = $uploadDir . basename($_FILES['userfile']['name']);
     $fileType = strtolower(pathinfo($uploadFile, PATHINFO_EXTENSION));
 

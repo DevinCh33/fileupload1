@@ -25,6 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (strpos($content, '<?php') === false) { // Example check to prevent PHP code
                     // Move the uploaded file to a secure directory
                     $uploadDir = 'uploads/';
+                    
+                    // Ensure upload directory exists
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+                    
                     $uploadFile = $uploadDir . basename($file['name']);
                     
                     if (move_uploaded_file($file['tmp_name'], $uploadFile)) {

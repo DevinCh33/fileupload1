@@ -12,6 +12,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_FILES['fileToUpload'])) {
         $file = $_FILES['fileToUpload'];
         $uploadDirectory = 'uploads/';
+        
+        // Ensure upload directory exists
+        if (!is_dir($uploadDirectory)) {
+            mkdir($uploadDirectory, 0755, true);
+        }
+        
         $uploadFilePath = $uploadDirectory . basename($file['name']);
         
         // Validate file type

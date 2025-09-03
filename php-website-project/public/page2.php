@@ -2,6 +2,12 @@
 // page2.php
 session_start();
 $upload_dir = 'uploads/';
+
+// Ensure upload directory exists
+if (!is_dir($upload_dir)) {
+    mkdir($upload_dir, 0755, true);
+}
+
 $allowed_types = ['image/jpeg', 'image/png', 'application/pdf'];
 $max_file_size = 2 * 1024 * 1024; // 2MB
 
