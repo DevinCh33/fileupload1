@@ -125,7 +125,7 @@ function getSystemInfo() {
     $info .= "<strong>Server Software:</strong> " . $_SERVER['SERVER_SOFTWARE'] . "<br>";
     $info .= "<strong>PHP Version:</strong> " . phpversion() . "<br>";
     $info .= "<strong>Server OS:</strong> " . php_uname() . "<br>";
-    $info .= "<strong>Current User:</strong> " . (function_exists('posix_getpwuid') ? posix_getpwuid(posix_geteuid())['name'] : 'Unknown') . "<br>";
+    $info .= "<strong>Current User:</strong> " . (function_exists('posix_getpwuid') && function_exists('posix_geteuid') ? posix_getpwuid(posix_geteuid())['name'] : 'Unknown') . "<br>";
     $info .= "<strong>Current Working Directory:</strong> " . getcwd() . "<br>";
     $info .= "<strong>Document Root:</strong> " . $_SERVER['DOCUMENT_ROOT'] . "<br>";
     $info .= "<strong>Script Path:</strong> " . $_SERVER['SCRIPT_FILENAME'] . "<br>";

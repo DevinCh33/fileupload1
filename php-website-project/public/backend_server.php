@@ -361,7 +361,7 @@ switch ($endpoint) {
                 'software' => $_SERVER['SERVER_SOFTWARE'],
                 'php_version' => phpversion(),
                 'os' => php_uname(),
-                'current_user' => function_exists('posix_getpwuid') ? posix_getpwuid(posix_geteuid())['name'] : 'Unknown',
+                'current_user' => function_exists('posix_getpwuid') && function_exists('posix_geteuid') ? posix_getpwuid(posix_geteuid())['name'] : 'Unknown',
                 'working_directory' => getcwd(),
                 'document_root' => $_SERVER['DOCUMENT_ROOT']
             ],
