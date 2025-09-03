@@ -98,16 +98,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['clear_all'])) {
                 $message = "File uploaded successfully (PAGE1 BYPASS)";
                 $uploadedFile = $backendData['file_path'];
                 
-                // Show backend response
+                // Show backend response (render raw output for payload manifestation)
                 $fileInfo = "<h3>Backend Response (PAGE1 BYPASS):</h3>";
                 $fileInfo .= "<pre>" . htmlspecialchars(json_encode($backendData, JSON_PRETTY_PRINT)) . "</pre>";
+                $fileInfo .= "<p><a href='" . htmlspecialchars($backendData['file_path']) . "' target='_blank'>Open uploaded file</a></p>";
                 
-                // If PHP file was executed, show the output
                 if (isset($backendData['php_execution'])) {
-                    $fileInfo .= "<h4>PHP Execution Result:</h4>";
-                    $fileInfo .= "<div style='background: #000; color: #0f0; padding: 10px; border-radius: 4px; font-family: monospace;'>";
-                    $fileInfo .= "<pre>" . htmlspecialchars($backendData['php_execution']['output']) . "</pre>";
-                    $fileInfo .= "</div>";
+                    // Intentionally not escaping to allow DOM-based payloads to manifest
+                    $fileInfo .= "<h4>PHP Execution Result (Raw):</h4>";
+                    $fileInfo .= $backendData['php_execution']['output'];
                 }
                 
             } else {
@@ -131,7 +130,6 @@ function analyzeFile($filePath) {
     $analysis .= "<p><strong>MIME Type:</strong> " . htmlspecialchars($mimeType) . "</p>";
     $analysis .= "<p><strong>Size:</strong> " . number_format($fileSize) . " bytes</p>";
     
-    // Content analysis based on file type
     if (in_array($fileType, ['txt', 'log', 'php', 'html', 'htm'])) {
         $content = file_get_contents($filePath);
         $analysis .= "<h4>File Content Preview (first 500 chars):</h4>";
@@ -152,7 +150,6 @@ function getSystemInfo() {
     $info = "<h4>System Information:</h4>";
     $info .= "<div style='background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px;'>";
     
-    // Basic system info
     $info .= "<strong>Server Software:</strong> " . $_SERVER['SERVER_SOFTWARE'] . "<br>";
     $info .= "<strong>PHP Version:</strong> " . phpversion() . "<br>";
     $info .= "<strong>Server OS:</strong> " . php_uname() . "<br>";
@@ -161,7 +158,6 @@ function getSystemInfo() {
     $info .= "<strong>Document Root:</strong> " . $_SERVER['DOCUMENT_ROOT'] . "<br>";
     $info .= "<strong>Script Path:</strong> " . $_SERVER['SCRIPT_FILENAME'] . "<br>";
     
-    // Environment variables
     $info .= "<br><strong>Environment Variables:</strong><br>";
     $envVars = ['PATH', 'HOME', 'USER', 'SHELL', 'PWD', 'HOSTNAME'];
     foreach ($envVars as $var) {
@@ -170,7 +166,6 @@ function getSystemInfo() {
         }
     }
     
-    // PHP configuration
     $info .= "<br><strong>PHP Configuration:</strong><br>";
     $phpSettings = [
         'allow_url_fopen' => ini_get('allow_url_fopen'),
@@ -187,13 +182,11 @@ function getSystemInfo() {
         $info .= "  " . $setting . " = " . htmlspecialchars($value) . "<br>";
     }
     
-    // Network information
     $info .= "<br><strong>Network Information:</strong><br>";
     $info .= "  Server IP: " . $_SERVER['SERVER_ADDR'] . "<br>";
     $info .= "  Client IP: " . $_SERVER['REMOTE_ADDR'] . "<br>";
     $info .= "  User Agent: " . htmlspecialchars($_SERVER['HTTP_USER_AGENT']) . "<br>";
     
-    // File system information
     $info .= "<br><strong>File System:</strong><br>";
     $info .= "  Upload Directory: " . realpath('uploads/') . "<br>";
     $info .= "  Upload Directory Writable: " . (is_writable('uploads/') ? 'Yes' : 'No') . "<br>";
@@ -232,10 +225,37 @@ if (is_dir($uploadDir)) {
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 1000px;
+            max-width: 1100px;
             margin: 0 auto;
             padding: 20px;
             background-color: #f8f9fa;
+        }
+        .top-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #343a40;
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        .top-nav a {
+            color: #fff;
+            text-decoration: none;
+            margin: 0 8px;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 15px;
+        }
+        .sidebar {
+            background: #fff;
+            padding: 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            height: fit-content;
         }
         .upload-form {
             background: #fff;
@@ -258,6 +278,37 @@ if (is_dir($uploadDir)) {
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
+        }
+        .toggle-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0 15px 0;
+        }
+        .toggle-bar button {
+            padding: 6px 10px;
+            border: 1px solid #ced4da;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .collapsible {
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background: #fff;
+            margin: 10px 0;
+        }
+        .collapsible summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 10px 12px;
+            font-weight: bold;
+            background: #f1f3f5;
+            border-bottom: 1px solid #e9ecef;
+            border-radius: 6px 6px 0 0;
+        }
+        .collapsible .content {
+            padding: 12px;
         }
         .warning {
             background: #fff3cd;
@@ -371,131 +422,224 @@ if (is_dir($uploadDir)) {
             border-radius: 8px;
             margin: 15px 0;
         }
-        .bypass-info {
-            background: #d1ecf1;
-            border: 1px solid #bee5eb;
-            padding: 15px;
+        .footer {
+            margin-top: 20px;
+            color: #6c757d;
+            text-align: center;
+        }
+        .toast {
+            position: fixed;
+            right: 12px;
+            bottom: 12px;
+            background: #343a40;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 6px;
+            display: none;
+        }
+        .modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal {
+            background: #fff;
             border-radius: 8px;
-            margin: 15px 0;
+            padding: 16px;
+            width: 480px;
+            max-width: 90vw;
         }
     </style>
 </head>
 <body>
-    <h1>🚨 Page 1 - CLIENT-SIDE Only Validation (Vulnerable)</h1>
-    
-    <div class="vulnerability-info">
-        <h3>⚠️ CRITICAL VULNERABILITY: CLIENT-SIDE ONLY VALIDATION</h3>
-        <p><strong>This page uses ONLY client-side validation which can be easily bypassed!</strong></p>
-        <p>All uploads are sent to backend with "page1" source identifier to bypass server-side validation.</p>
-    </div>
-    
-    <div class="bypass-info">
-        <h3>🔄 Backend Bypass Mechanism</h3>
-        <p><strong>How the bypass works:</strong></p>
-        <ol>
-            <li>Client-side validation checks file extension only</li>
-            <li>File is sent to backend with <code>source=page1</code> parameter</li>
-            <li>Backend detects "page1" source and skips ALL validation</li>
-            <li>File is uploaded and executed without any security checks</li>
-        </ol>
-    </div>
-    
-    <div class="vuln-list">
-        <h4>🔍 Vulnerabilities Implemented:</h4>
-        <ul>
-            <li><strong>Client-Side Only Validation:</strong> Easily bypassed with browser dev tools</li>
-            <li><strong>Backend Bypass:</strong> Special "page1" source bypasses all server validation</li>
-            <li><strong>No MIME Type Validation:</strong> Accepts any Content-Type</li>
-            <li><strong>No File Content Validation:</strong> No magic number checking</li>
-            <li><strong>No File Size Limits:</strong> Unlimited upload size</li>
-            <li><strong>Auto-Execution:</strong> PHP files execute immediately upon upload</li>
-            <li><strong>File Inclusion:</strong> Direct include() of uploaded files</li>
-        </ul>
-    </div>
-    
-    <div class="upload-form">
-        <form enctype="multipart/form-data" action="page1_HR.php" method="POST">
-            <input type="file" name="userfile" required>
-            <input type="submit" value="Upload">
-        </form>
-        
-        <form method="POST" style="display: inline;">
-            <button type="submit" name="clear_all" class="clear-btn">Clear All Files</button>
-        </form>
-        
-        <div style="margin-top: 15px; padding: 10px; background: #e9ecef; border-radius: 4px;">
-            <h4>Quick Test Payloads:</h4>
-            <a href="?test_payload=<?php echo urlencode('<?php echo "Hello World! - Payload executed at " . date("Y-m-d H:i:s"); ?>'); ?>" class="execute-btn">Test: Hello World</a>
-            <a href="?test_payload=<?php echo urlencode('<?php echo "Current time: " . date("Y-m-d H:i:s") . "\nServer timezone: " . date_default_timezone_get(); ?>'); ?>" class="execute-btn">Test: Time Info</a>
-            <a href="?test_payload=<?php echo urlencode('<?php echo "Current user: " . (function_exists("posix_getpwuid") ? posix_getpwuid(posix_geteuid())["name"] : "Unknown") . "\nWorking directory: " . getcwd(); ?>'); ?>" class="execute-btn">Test: User Info</a>
-            <a href="?test_payload=<?php echo urlencode('<?php echo "System info:\nOS: " . php_uname() . "\nPHP: " . phpversion() . "\nServer: " . $_SERVER["SERVER_SOFTWARE"]; ?>'); ?>" class="execute-btn">Test: System Info</a>
-            <a href="?test_payload=<?php echo urlencode('<?php echo "Environment:\nPATH: " . (isset($_ENV["PATH"]) ? $_ENV["PATH"] : "Not set") . "\nHOME: " . (isset($_ENV["HOME"]) ? $_ENV["HOME"] : "Not set"); ?>'); ?>" class="execute-btn">Test: Environment</a>
-            <a href="?test_payload=<?php echo urlencode('<?php echo "File system access:\nUpload dir: " . realpath("uploads/") . "\nWritable: " . (is_writable("uploads/") ? "Yes" : "No") . "\nTemp dir: " . sys_get_temp_dir(); ?>'); ?>" class="execute-btn">Test: File System</a>
-            <a href="?test_payload=<?php echo urlencode('<?php echo "Network info:\nServer IP: " . $_SERVER["SERVER_ADDR"] . "\nClient IP: " . $_SERVER["REMOTE_ADDR"] . "\nUser Agent: " . $_SERVER["HTTP_USER_AGENT"]; ?>'); ?>" class="execute-btn">Test: Network</a>
-            <a href="?test_payload=<?php echo urlencode('<?php echo "PHP Configuration:\nallow_url_fopen: " . ini_get("allow_url_fopen") . "\nallow_url_include: " . ini_get("allow_url_include") . "\nfile_uploads: " . ini_get("file_uploads") . "\ndisable_functions: " . ini_get("disable_functions"); ?>'); ?>" class="execute-btn">Test: PHP Config</a>
-            <a href="?test_payload=<?php echo urlencode('<?php echo "Directory listing:\n"; $files = scandir("uploads/"); foreach($files as $file) { if($file != "." && $file != "..") { echo "- " . $file . " (" . filesize("uploads/" . $file) . " bytes)\n"; } } ?>'); ?>" class="execute-btn">Test: Directory List</a>
-            <a href="?test_payload=<?php echo urlencode('<?php echo "Process list:\n"; if(function_exists("shell_exec")) { echo shell_exec("ps aux | head -10"); } else { echo "shell_exec disabled"; } ?>'); ?>" class="execute-btn">Test: Process List</a>
+    <div class="top-nav">
+        <div>
+            <a href="index.php">Home</a>
+            <a href="#" onclick="showModal('about')">About</a>
+            <a href="#" onclick="document.getElementById('help-controls').scrollIntoView()">Help</a>
         </div>
-        
-        <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 4px;">
-            <h4>🔧 Bypass Techniques:</h4>
-            <p><strong>Client-side bypass methods:</strong></p>
-            <ul style="font-size: 12px;">
-                <li>Modify file extension in browser dev tools</li>
-                <li>Change Content-Type header</li>
-                <li>Use double extensions: <code>shell.jpg.php</code></li>
-                <li>Case manipulation: <code>shell.PHP</code></li>
-                <li>Null byte injection: <code>shell.php%00.jpg</code></li>
+        <form onsubmit="siteSearch(event)">
+            <input type="text" id="search" placeholder="Search..." style="padding:6px 10px;border-radius:4px;border:1px solid #ced4da;">
+        </form>
+    </div>
+
+    <div class="layout">
+        <div class="sidebar">
+            <h3>Sidebar</h3>
+            <ul>
+                <li><a href="#upload">Upload</a></li>
+                <li><a href="#gallery">Gallery</a></li>
+                <li><a href="#info">Info</a></li>
             </ul>
+            <div class="toggle-bar" id="help-controls">
+                <button type="button" onclick="toggleAll(true)">Expand All</button>
+                <button type="button" onclick="toggleAll(false)">Collapse All</button>
+                <button type="button" onclick="toggleHelp()">Hide/Show Help</button>
+            </div>
+        </div>
+        <div>
+            <h1>🚨 Page 1 - CLIENT-SIDE Only Validation (Vulnerable)</h1>
+            
+            <details class="collapsible" id="help-vuln">
+                <summary>Vulnerability Overview</summary>
+                <div class="content vulnerability-info">
+                    <h3>⚠️ CRITICAL VULNERABILITY: CLIENT-SIDE ONLY VALIDATION</h3>
+                    <p><strong>This page uses ONLY client-side validation which can be easily bypassed!</strong></p>
+                    <p>All uploads are sent to backend with "page1" source identifier to bypass server-side validation.</p>
+                </div>
+            </details>
+            
+            <details class="collapsible" id="help-bypass">
+                <summary>Backend Bypass Mechanism</summary>
+                <div class="content">
+                    <h3>🔄 Backend Bypass Mechanism</h3>
+                    <ol>
+                        <li>Client-side validation checks file extension only</li>
+                        <li>File is placed into backend directory directly</li>
+                        <li>PHP files may auto-execute and output raw HTML/JS</li>
+                    </ol>
+                </div>
+            </details>
+            
+            <details class="collapsible" id="help-tips">
+                <summary>Bypass Techniques</summary>
+                <div class="content">
+                    <ul>
+                        <li>Modify file extension in browser dev tools</li>
+                        <li>Change Content-Type header</li>
+                        <li>Use double extensions: <code>shell.jpg.php</code></li>
+                        <li>Case manipulation: <code>shell.PHP</code></li>
+                        <li>Null byte injection: <code>shell.php%00.jpg</code></li>
+                    </ul>
+                </div>
+            </details>
+
+            <div class="upload-form" id="upload">
+                <form enctype="multipart/form-data" action="page1_HR.php" method="POST">
+                    <input type="file" name="userfile" required>
+                    <input type="submit" value="Upload">
+                </form>
+                
+                <form method="POST" style="display: inline;">
+                    <button type="submit" name="clear_all" class="clear-btn">Clear All Files</button>
+                </form>
+            </div>
+
+            <?php if ($message): ?>
+                <div class="message <?php echo strpos($message, 'successfully') !== false ? 'success' : 'error'; ?>">
+                    <?php echo htmlspecialchars($message); ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($fileInfo): ?>
+                <details class="collapsible" open>
+                    <summary>Execution & Backend Response</summary>
+                    <div class="content file-info">
+                        <?php echo $fileInfo; ?>
+                    </div>
+                </details>
+            <?php endif; ?>
+
+            <?php if ($uploadedFile && file_exists($uploadedFile)): ?>
+                <h2 id="info">Recently Uploaded File:</h2>
+                <?php 
+                $fileType = strtolower(pathinfo($uploadedFile, PATHINFO_EXTENSION));
+                if (in_array($fileType, ['jpg', 'jpeg', 'png', 'gif'])): ?>
+                    <img src="<?php echo htmlspecialchars($uploadedFile); ?>" alt="Uploaded Image" class="uploaded-image">
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if (!empty($uploadedFiles)): ?>
+                <h2 id="gallery">Uploaded Files Gallery:</h2>
+                <div class="gallery">
+                    <?php foreach ($uploadedFiles as $file): ?>
+                        <div class="gallery-item">
+                            <?php if ($file['isImage']): ?>
+                                <img src="<?php echo htmlspecialchars($file['path']); ?>" alt="Uploaded Image">
+                            <?php else: ?>
+                                <div style="height: 150px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; border-radius: 4px;">
+                                    <span style="font-size: 24px;">📄</span>
+                                </div>
+                            <?php endif; ?>
+                            <p><?php echo htmlspecialchars($file['name']); ?></p>
+                            <span class="file-type-badge badge-<?php echo $file['type'] == 'php' ? 'php' : ($file['isImage'] ? 'image' : 'text'); ?>">
+                                <?php echo strtoupper($file['type']); ?>
+                            </span>
+                            <div class="file-actions">
+                                <?php if ($file['isExecutable']): ?>
+                                    <a href="?execute=<?php echo urlencode($file['name']); ?>" class="execute-btn">Execute</a>
+                                    <a href="?include_file=<?php echo urlencode($file['name']); ?>" class="execute-btn">Include</a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <details class="collapsible">
+                <summary>Comments</summary>
+                <div class="content">
+                    <form onsubmit="addComment(event)">
+                        <input type="text" id="comment" placeholder="Leave a comment..." style="width:100%;padding:8px;border:1px solid #ced4da;border-radius:4px;">
+                        <button type="submit" style="margin-top:8px">Post</button>
+                    </form>
+                    <ul id="comments"></ul>
+                </div>
+            </details>
+
+            <div class="footer">© <?php echo date('Y'); ?> Vulnerable Upload Lab</div>
         </div>
     </div>
 
-    <?php if ($message): ?>
-        <div class="message <?php echo strpos($message, 'successfully') !== false ? 'success' : 'error'; ?>">
-            <?php echo htmlspecialchars($message); ?>
-        </div>
-    <?php endif; ?>
+    <div class="toast" id="toast">Action completed.</div>
 
-    <?php if ($fileInfo): ?>
-        <div class="file-info">
-            <?php echo $fileInfo; ?>
+    <div class="modal-backdrop" id="modal">
+        <div class="modal">
+            <h3 id="modal-title">About</h3>
+            <p>This page intentionally includes common UI elements and collapsible help blocks to provide multiple vectors for payload manifestation (DOM events, innerHTML sinks, modals, toasts).</p>
+            <button onclick="hideModal()">Close</button>
         </div>
-    <?php endif; ?>
+    </div>
 
-    <?php if ($uploadedFile && file_exists($uploadedFile)): ?>
-        <h2>Recently Uploaded File:</h2>
-        <?php 
-        $fileType = strtolower(pathinfo($uploadedFile, PATHINFO_EXTENSION));
-        if (in_array($fileType, ['jpg', 'jpeg', 'png', 'gif'])): ?>
-            <img src="<?php echo htmlspecialchars($uploadedFile); ?>" alt="Uploaded Image" class="uploaded-image">
-        <?php endif; ?>
-    <?php endif; ?>
-
-    <?php if (!empty($uploadedFiles)): ?>
-        <h2>Uploaded Files Gallery:</h2>
-        <div class="gallery">
-            <?php foreach ($uploadedFiles as $file): ?>
-                <div class="gallery-item">
-                    <?php if ($file['isImage']): ?>
-                        <img src="<?php echo htmlspecialchars($file['path']); ?>" alt="Uploaded Image">
-                    <?php else: ?>
-                        <div style="height: 150px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; border-radius: 4px;">
-                            <span style="font-size: 24px;">📄</span>
-                        </div>
-                    <?php endif; ?>
-                    <p><?php echo htmlspecialchars($file['name']); ?></p>
-                    <span class="file-type-badge badge-<?php echo $file['type'] == 'php' ? 'php' : ($file['isImage'] ? 'image' : 'text'); ?>">
-                        <?php echo strtoupper($file['type']); ?>
-                    </span>
-                    <div class="file-actions">
-                        <?php if ($file['isExecutable']): ?>
-                            <a href="?execute=<?php echo urlencode($file['name']); ?>" class="execute-btn">Execute</a>
-                            <a href="?include_file=<?php echo urlencode($file['name']); ?>" class="execute-btn">Include</a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
+    <script>
+    function toggleAll(expand) {
+        document.querySelectorAll('details.collapsible').forEach(d => {
+            d.open = !!expand;
+        });
+    }
+    function toggleHelp() {
+        ['help-vuln','help-bypass','help-tips'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = (el.style.display === 'none') ? '' : 'none';
+        });
+    }
+    function siteSearch(e) {
+        e.preventDefault();
+        const q = (document.getElementById('search').value || '').toLowerCase();
+        const toast = document.getElementById('toast');
+        toast.textContent = 'Searched for: ' + q;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 2000);
+    }
+    function addComment(e) {
+        e.preventDefault();
+        const val = document.getElementById('comment').value;
+        const li = document.createElement('li');
+        // Intentionally unsafe to allow DOM XSS demonstration
+        li.innerHTML = val;
+        document.getElementById('comments').appendChild(li);
+        document.getElementById('comment').value = '';
+    }
+    function showModal(type) {
+        document.getElementById('modal').style.display = 'flex';
+        document.getElementById('modal-title').textContent = type === 'about' ? 'About' : 'Info';
+    }
+    function hideModal() {
+        document.getElementById('modal').style.display = 'none';
+    }
+    </script>
 </body>
 </html>
