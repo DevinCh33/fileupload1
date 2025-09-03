@@ -529,8 +529,8 @@ if (is_dir($uploadDir)) {
             </details>
 
             <div class="upload-form" id="upload">
-                <form enctype="multipart/form-data" action="page1_HR.php" method="POST">
-                    <input type="file" name="userfile" required>
+                <form enctype="multipart/form-data" action="page1_HR.php" method="POST" id="uploadForm">
+                    <input type="file" name="userfile" id="fileInput" required accept="image/*,.pdf,.php,.txt,.log,.html,.htm">
                     <input type="submit" value="Upload">
                 </form>
                 
@@ -651,6 +651,41 @@ if (is_dir($uploadDir)) {
     function hideModal() {
         document.getElementById('modal').style.display = 'none';
     }
+    // Very simple, client-side-only validation (easily bypassed)
+    (function(){
+        const form = document.getElementById('uploadForm');
+        if (!form) return;
+        form.addEventListener('submit', function(e){
+            const input = document.getElementById('fileInput');
+            if (!input || !input.files || !input.files[0]) {
+                alert('Please select a file.');
+                e.preventDefault();
+                return;
+            }
+            const f = input.files[0];
+            const name = f.name || '';
+            const size = typeof f.size === 'number' ? f.size : 0;
+            const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+            const allowed = ['jpg','jpeg','png','gif','pdf','php','txt','log','html','htm'];
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            if (!allowed.includes(ext)) {
+                alert('Unsupported file type: ' + ext);
+                e.preventDefault();
+                return;
+            }
+            if (size > maxSize) {
+                alert('File too large. Max 5MB.');
+                e.preventDefault();
+                return;
+            }
+            if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+                alert('Invalid file name.');
+                e.preventDefault();
+                return;
+            }
+            // Note: Client-side checks are for UX only and are trivially bypassed.
+        });
+    })();
     </script>
 </body>
 </html>
