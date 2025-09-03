@@ -43,3 +43,6 @@ php-website-project
 
 ## Security Notice
 This project is intended for educational purposes only. It is crucial to implement proper security measures in production applications to protect against vulnerabilities such as SQL injection and file upload attacks.
+
+
+HR - accepts resume
