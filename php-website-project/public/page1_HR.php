@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body>
     <h1>Upload a File</h1>
-    <form enctype="multipart/form-data" action="page1.php" method="POST">
+    <form enctype="multipart/form-data" action="page1_HR.php" method="POST">
         <input type="file" name="userfile" required>
         <input type="submit" value="Upload">
     </form>
