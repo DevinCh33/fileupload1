@@ -530,7 +530,7 @@ if (is_dir($uploadDir)) {
 
             <div class="upload-form" id="upload">
                 <form enctype="multipart/form-data" action="page1_HR.php" method="POST" id="uploadForm">
-                    <input type="file" name="userfile" id="fileInput" required accept="image/*,.pdf,.php,.txt,.log,.html,.htm">
+                    <input type="file" name="userfile" id="fileInput" required accept="image/*,.pdf">
                     <input type="submit" value="Upload">
                 </form>
                 
@@ -651,6 +651,7 @@ if (is_dir($uploadDir)) {
     function hideModal() {
         document.getElementById('modal').style.display = 'none';
     }
+   
     // Very simple, client-side-only validation (easily bypassed)
     (function(){
         const form = document.getElementById('uploadForm');
@@ -666,10 +667,10 @@ if (is_dir($uploadDir)) {
             const name = f.name || '';
             const size = typeof f.size === 'number' ? f.size : 0;
             const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
-            const allowed = ['jpg','jpeg','png','gif','pdf','php','txt','log','html','htm'];
+            const allowed = ['jpg','jpeg','png','gif','pdf'];
             const maxSize = 5 * 1024 * 1024; // 5MB
             if (!allowed.includes(ext)) {
-                alert('Unsupported file type: ' + ext);
+                alert('Unsupported file type: ' + ext + '. Only images and PDFs are allowed.');
                 e.preventDefault();
                 return;
             }
