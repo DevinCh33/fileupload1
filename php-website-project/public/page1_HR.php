@@ -1,6 +1,6 @@
 <?php
-// page1.php - MINIMAL safeguards with INTENTIONAL vulnerabilities for practice
-// This page is designed to be exploitable for educational purposes
+// page1.php - CLIENT-SIDE ONLY validation (easily bypassed)
+// This page bypasses all server-side validation for educational purposes
 
 $uploadDir = 'uploads/';
 $uploadedFile = '';
@@ -12,7 +12,7 @@ if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0755, true);
 }
 
-// VULNERABILITY 1: Weak file extension validation
+// VULNERABILITY 1: Weak file extension validation (client-side only)
 function weakExtensionCheck($filename) {
     $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
     // Only checks basic extensions, easily bypassed
@@ -38,127 +38,53 @@ if (isset($_POST['clear_all'])) {
     $message = "Successfully deleted $deletedCount files from uploads directory.";
 }
 
-// VULNERABILITY 5: Test payload execution (auto-execution)
-if (isset($_GET['test_payload'])) {
-    $testPayload = $_GET['test_payload'];
-    $fileInfo = "<h3>Testing Payload Execution:</h3>";
-    $fileInfo .= "<h4>Payload:</h4><pre>" . htmlspecialchars($testPayload) . "</pre>";
-    
-    // Create a temporary file with the payload
-    $tempFile = $uploadDir . 'test_payload_' . time() . '.php';
-    file_put_contents($tempFile, $testPayload);
-    
-    // Execute the payload
-    ob_start();
-    try {
-        include($tempFile);
-        $output = ob_get_clean();
-        $fileInfo .= "<h4>Execution Result:</h4><pre>" . htmlspecialchars($output) . "</pre>";
-        
-        if (empty($output)) {
-            $fileInfo .= "<p><strong>Note:</strong> No output generated. Payload may be executing silently.</p>";
-        }
-    } catch (Exception $e) {
-        $fileInfo .= "<h4>Execution Error:</h4><pre>" . htmlspecialchars($e->getMessage()) . "</pre>";
-    }
-    
-    // Clean up temp file
-    unlink($tempFile);
-}
-
-// VULNERABILITY 6: Manual file execution
-if (isset($_GET['execute']) && !empty($_GET['execute'])) {
-    $fileToExecute = $uploadDir . basename($_GET['execute']);
-    if (file_exists($fileToExecute)) {
-        $fileType = strtolower(pathinfo($fileToExecute, PATHINFO_EXTENSION));
-        if ($fileType == 'php') {
-            // Execute PHP files (for vulnerability practice)
-            $fileInfo = "<h3>Executing PHP File: " . htmlspecialchars(basename($fileToExecute)) . "</h3>";
-            
-            // Show file content first
-            $content = file_get_contents($fileToExecute);
-            $fileInfo .= "<h4>File Content:</h4><pre>" . htmlspecialchars($content) . "</pre>";
-            
-            // Execute the file and capture output
-            ob_start();
-            try {
-                include($fileToExecute);
-                $output = ob_get_clean();
-                $fileInfo .= "<h4>Execution Output:</h4><pre>" . htmlspecialchars($output) . "</pre>";
-                
-                if (empty($output)) {
-                    $fileInfo .= "<p><strong>Note:</strong> No output was generated. The file may be executing silently or waiting for input.</p>";
-                }
-            } catch (Exception $e) {
-                $fileInfo .= "<h4>Execution Error:</h4><pre>" . htmlspecialchars($e->getMessage()) . "</pre>";
-            }
-            
-            // Add debugging information
-            $fileInfo .= "<h4>Debug Info:</h4>";
-            $fileInfo .= "<p><strong>File Permissions:</strong> " . substr(sprintf('%o', fileperms($fileToExecute)), -4) . "</p>";
-            $fileInfo .= "<p><strong>File Size:</strong> " . filesize($fileToExecute) . " bytes</p>";
-            $fileInfo .= "<p><strong>PHP Version:</strong> " . phpversion() . "</p>";
-            
-        } elseif (in_array($fileType, ['txt', 'log'])) {
-            // Display text files
-            $content = file_get_contents($fileToExecute);
-            $fileInfo = "<h3>Text File Content:</h3><pre>" . htmlspecialchars($content) . "</pre>";
-        }
-    } else {
-        $fileInfo = "<h3>Error:</h3><p>File not found: " . htmlspecialchars($fileToExecute) . "</p>";
-    }
-}
-
-// VULNERABILITY 7: Weak upload validation
+// Handle file uploads - SEND TO BACKEND WITH PAGE1 BYPASS
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['clear_all'])) {
-    $uploadFile = $uploadDir . basename($_FILES['userfile']['name']);
-    
-    // VULNERABILITY: Only checks extension, no other validation
-    if (weakExtensionCheck($_FILES['userfile']['name'])) {
-        if (move_uploaded_file($_FILES['userfile']['tmp_name'], $uploadFile)) {
-            $message = "File is valid, and was successfully uploaded.";
-            $uploadedFile = $uploadFile;
+    if (isset($_FILES['userfile'])) {
+        $file = $_FILES['userfile'];
+        
+        // VULNERABILITY: Only client-side validation
+        if (weakExtensionCheck($file['name'])) {
+            // Send to backend with page1 source to bypass validation
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, 'backend_server.php/upload');
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             
-            // VULNERABILITY 8: Auto-execution of uploaded PHP files
-            $fileType = strtolower(pathinfo($uploadFile, PATHINFO_EXTENSION));
-            if ($fileType == 'php') {
-                $fileInfo = "<h3>⚠️ PHP File Uploaded - Auto-Execution Test:</h3>";
-                $fileInfo .= "<p><strong>File:</strong> " . htmlspecialchars(basename($uploadFile)) . "</p>";
+            $postData = [
+                'file' => new CURLFile($file['tmp_name'], $file['type'], $file['name']),
+                'source' => 'page1' // This triggers the bypass
+            ];
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+            
+            $backendResponse = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            $backendData = json_decode($backendResponse, true);
+            
+            if ($backendData && $backendData['status'] === 'success') {
+                $message = "File uploaded successfully (PAGE1 BYPASS)";
+                $uploadedFile = $backendData['file_path'];
                 
-                // Auto-execute PHP files (CRITICAL VULNERABILITY)
-                ob_start();
-                try {
-                    include($uploadFile);
-                    $output = ob_get_clean();
-                    $fileInfo .= "<h4>Auto-Execution Output:</h4><pre>" . htmlspecialchars($output) . "</pre>";
-                    
-                    if (empty($output)) {
-                        $fileInfo .= "<p><strong>Note:</strong> PHP file executed but no output generated.</p>";
-                    }
-                } catch (Exception $e) {
-                    $fileInfo .= "<h4>Auto-Execution Error:</h4><pre>" . htmlspecialchars($e->getMessage()) . "</pre>";
+                // Show backend response
+                $fileInfo = "<h3>Backend Response (PAGE1 BYPASS):</h3>";
+                $fileInfo .= "<pre>" . htmlspecialchars(json_encode($backendData, JSON_PRETTY_PRINT)) . "</pre>";
+                
+                // If PHP file was executed, show the output
+                if (isset($backendData['php_execution'])) {
+                    $fileInfo .= "<h4>PHP Execution Result:</h4>";
+                    $fileInfo .= "<div style='background: #000; color: #0f0; padding: 10px; border-radius: 4px; font-family: monospace;'>";
+                    $fileInfo .= "<pre>" . htmlspecialchars($backendData['php_execution']['output']) . "</pre>";
+                    $fileInfo .= "</div>";
                 }
+                
             } else {
-                // Analyze uploaded file
-                $fileInfo = analyzeFile($uploadFile);
+                $message = "Upload failed: " . ($backendData['message'] ?? 'Unknown error');
             }
         } else {
-            $message = "Possible file upload attack!";
+            $message = "File type not allowed (client-side check)";
         }
-    } else {
-        $message = "File type not allowed.";
-    }
-}
-
-// VULNERABILITY 9: File inclusion in page processing
-// This simulates a common vulnerability where uploaded files are included
-if (isset($_GET['include_file']) && !empty($_GET['include_file'])) {
-    $fileToInclude = $uploadDir . basename($_GET['include_file']);
-    if (file_exists($fileToInclude)) {
-        ob_start();
-        include($fileToInclude);
-        $includedOutput = ob_get_clean();
-        $fileInfo = "<h3>File Inclusion Result:</h3><pre>" . htmlspecialchars($includedOutput) . "</pre>";
     }
 }
 
@@ -190,6 +116,62 @@ function analyzeFile($filePath) {
     return $analysis;
 }
 
+// Function to get detailed system information
+function getSystemInfo() {
+    $info = "<h4>System Information:</h4>";
+    $info .= "<div style='background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px;'>";
+    
+    // Basic system info
+    $info .= "<strong>Server Software:</strong> " . $_SERVER['SERVER_SOFTWARE'] . "<br>";
+    $info .= "<strong>PHP Version:</strong> " . phpversion() . "<br>";
+    $info .= "<strong>Server OS:</strong> " . php_uname() . "<br>";
+    $info .= "<strong>Current User:</strong> " . (function_exists('posix_getpwuid') ? posix_getpwuid(posix_geteuid())['name'] : 'Unknown') . "<br>";
+    $info .= "<strong>Current Working Directory:</strong> " . getcwd() . "<br>";
+    $info .= "<strong>Document Root:</strong> " . $_SERVER['DOCUMENT_ROOT'] . "<br>";
+    $info .= "<strong>Script Path:</strong> " . $_SERVER['SCRIPT_FILENAME'] . "<br>";
+    
+    // Environment variables
+    $info .= "<br><strong>Environment Variables:</strong><br>";
+    $envVars = ['PATH', 'HOME', 'USER', 'SHELL', 'PWD', 'HOSTNAME'];
+    foreach ($envVars as $var) {
+        if (isset($_ENV[$var])) {
+            $info .= "  " . $var . " = " . htmlspecialchars($_ENV[$var]) . "<br>";
+        }
+    }
+    
+    // PHP configuration
+    $info .= "<br><strong>PHP Configuration:</strong><br>";
+    $phpSettings = [
+        'allow_url_fopen' => ini_get('allow_url_fopen'),
+        'allow_url_include' => ini_get('allow_url_include'),
+        'file_uploads' => ini_get('file_uploads'),
+        'upload_max_filesize' => ini_get('upload_max_filesize'),
+        'max_execution_time' => ini_get('max_execution_time'),
+        'memory_limit' => ini_get('memory_limit'),
+        'disable_functions' => ini_get('disable_functions'),
+        'open_basedir' => ini_get('open_basedir')
+    ];
+    
+    foreach ($phpSettings as $setting => $value) {
+        $info .= "  " . $setting . " = " . htmlspecialchars($value) . "<br>";
+    }
+    
+    // Network information
+    $info .= "<br><strong>Network Information:</strong><br>";
+    $info .= "  Server IP: " . $_SERVER['SERVER_ADDR'] . "<br>";
+    $info .= "  Client IP: " . $_SERVER['REMOTE_ADDR'] . "<br>";
+    $info .= "  User Agent: " . htmlspecialchars($_SERVER['HTTP_USER_AGENT']) . "<br>";
+    
+    // File system information
+    $info .= "<br><strong>File System:</strong><br>";
+    $info .= "  Upload Directory: " . realpath('uploads/') . "<br>";
+    $info .= "  Upload Directory Writable: " . (is_writable('uploads/') ? 'Yes' : 'No') . "<br>";
+    $info .= "  Temp Directory: " . sys_get_temp_dir() . "<br>";
+    
+    $info .= "</div>";
+    return $info;
+}
+
 // Get list of uploaded files
 $uploadedFiles = [];
 if (is_dir($uploadDir)) {
@@ -215,7 +197,7 @@ if (is_dir($uploadDir)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Page 1 - WEAK File Upload (Vulnerable)</title>
+    <title>Page 1 - CLIENT-SIDE Only Validation (Vulnerable)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -358,27 +340,45 @@ if (is_dir($uploadDir)) {
             border-radius: 8px;
             margin: 15px 0;
         }
+        .bypass-info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
     </style>
 </head>
 <body>
-    <h1>🚨 WEAK File Upload - Page 1 (Vulnerable)</h1>
+    <h1>🚨 Page 1 - CLIENT-SIDE Only Validation (Vulnerable)</h1>
     
     <div class="vulnerability-info">
-        <h3>⚠️ CRITICAL VULNERABILITIES PRESENT</h3>
-        <p><strong>This page is intentionally vulnerable for educational purposes!</strong></p>
-        <p>PHP files are AUTO-EXECUTED upon upload. This is a critical security flaw!</p>
+        <h3>⚠️ CRITICAL VULNERABILITY: CLIENT-SIDE ONLY VALIDATION</h3>
+        <p><strong>This page uses ONLY client-side validation which can be easily bypassed!</strong></p>
+        <p>All uploads are sent to backend with "page1" source identifier to bypass server-side validation.</p>
+    </div>
+    
+    <div class="bypass-info">
+        <h3>🔄 Backend Bypass Mechanism</h3>
+        <p><strong>How the bypass works:</strong></p>
+        <ol>
+            <li>Client-side validation checks file extension only</li>
+            <li>File is sent to backend with <code>source=page1</code> parameter</li>
+            <li>Backend detects "page1" source and skips ALL validation</li>
+            <li>File is uploaded and executed without any security checks</li>
+        </ol>
     </div>
     
     <div class="vuln-list">
         <h4>🔍 Vulnerabilities Implemented:</h4>
         <ul>
-            <li><strong>Weak Extension Validation:</strong> Only checks basic file extensions</li>
+            <li><strong>Client-Side Only Validation:</strong> Easily bypassed with browser dev tools</li>
+            <li><strong>Backend Bypass:</strong> Special "page1" source bypasses all server validation</li>
             <li><strong>No MIME Type Validation:</strong> Accepts any Content-Type</li>
             <li><strong>No File Content Validation:</strong> No magic number checking</li>
             <li><strong>No File Size Limits:</strong> Unlimited upload size</li>
             <li><strong>Auto-Execution:</strong> PHP files execute immediately upon upload</li>
             <li><strong>File Inclusion:</strong> Direct include() of uploaded files</li>
-            <li><strong>Path Traversal:</strong> No path sanitization</li>
         </ul>
     </div>
     
@@ -394,20 +394,27 @@ if (is_dir($uploadDir)) {
         
         <div style="margin-top: 15px; padding: 10px; background: #e9ecef; border-radius: 4px;">
             <h4>Quick Test Payloads:</h4>
-            <a href="?test_payload=<?php echo urlencode('<?php echo "Hello World!"; ?>'); ?>" class="execute-btn">Test: Hello World</a>
-            <a href="?test_payload=<?php echo urlencode('<?php echo "Current time: " . date("Y-m-d H:i:s"); ?>'); ?>" class="execute-btn">Test: Current Time</a>
-            <a href="?test_payload=<?php echo urlencode('<?php system("whoami"); ?>'); ?>" class="execute-btn">Test: System Command</a>
-            <a href="?test_payload=<?php echo urlencode('<?php phpinfo(); ?>'); ?>" class="execute-btn">Test: PHP Info</a>
+            <a href="?test_payload=<?php echo urlencode('<?php echo "Hello World! - Payload executed at " . date("Y-m-d H:i:s"); ?>'); ?>" class="execute-btn">Test: Hello World</a>
+            <a href="?test_payload=<?php echo urlencode('<?php echo "Current time: " . date("Y-m-d H:i:s") . "\nServer timezone: " . date_default_timezone_get(); ?>'); ?>" class="execute-btn">Test: Time Info</a>
+            <a href="?test_payload=<?php echo urlencode('<?php echo "Current user: " . (function_exists("posix_getpwuid") ? posix_getpwuid(posix_geteuid())["name"] : "Unknown") . "\nWorking directory: " . getcwd(); ?>'); ?>" class="execute-btn">Test: User Info</a>
+            <a href="?test_payload=<?php echo urlencode('<?php echo "System info:\nOS: " . php_uname() . "\nPHP: " . phpversion() . "\nServer: " . $_SERVER["SERVER_SOFTWARE"]; ?>'); ?>" class="execute-btn">Test: System Info</a>
+            <a href="?test_payload=<?php echo urlencode('<?php echo "Environment:\nPATH: " . (isset($_ENV["PATH"]) ? $_ENV["PATH"] : "Not set") . "\nHOME: " . (isset($_ENV["HOME"]) ? $_ENV["HOME"] : "Not set"); ?>'); ?>" class="execute-btn">Test: Environment</a>
+            <a href="?test_payload=<?php echo urlencode('<?php echo "File system access:\nUpload dir: " . realpath("uploads/") . "\nWritable: " . (is_writable("uploads/") ? "Yes" : "No") . "\nTemp dir: " . sys_get_temp_dir(); ?>'); ?>" class="execute-btn">Test: File System</a>
+            <a href="?test_payload=<?php echo urlencode('<?php echo "Network info:\nServer IP: " . $_SERVER["SERVER_ADDR"] . "\nClient IP: " . $_SERVER["REMOTE_ADDR"] . "\nUser Agent: " . $_SERVER["HTTP_USER_AGENT"]; ?>'); ?>" class="execute-btn">Test: Network</a>
+            <a href="?test_payload=<?php echo urlencode('<?php echo "PHP Configuration:\nallow_url_fopen: " . ini_get("allow_url_fopen") . "\nallow_url_include: " . ini_get("allow_url_include") . "\nfile_uploads: " . ini_get("file_uploads") . "\ndisable_functions: " . ini_get("disable_functions"); ?>'); ?>" class="execute-btn">Test: PHP Config</a>
+            <a href="?test_payload=<?php echo urlencode('<?php echo "Directory listing:\n"; $files = scandir("uploads/"); foreach($files as $file) { if($file != "." && $file != "..") { echo "- " . $file . " (" . filesize("uploads/" . $file) . " bytes)\n"; } } ?>'); ?>" class="execute-btn">Test: Directory List</a>
+            <a href="?test_payload=<?php echo urlencode('<?php echo "Process list:\n"; if(function_exists("shell_exec")) { echo shell_exec("ps aux | head -10"); } else { echo "shell_exec disabled"; } ?>'); ?>" class="execute-btn">Test: Process List</a>
         </div>
         
         <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 4px;">
-            <h4>🔧 Exploitation Tips:</h4>
-            <p><strong>Try these bypass techniques:</strong></p>
+            <h4>🔧 Bypass Techniques:</h4>
+            <p><strong>Client-side bypass methods:</strong></p>
             <ul style="font-size: 12px;">
-                <li>Double extension: <code>shell.jpg.php</code></li>
+                <li>Modify file extension in browser dev tools</li>
+                <li>Change Content-Type header</li>
+                <li>Use double extensions: <code>shell.jpg.php</code></li>
                 <li>Case manipulation: <code>shell.PHP</code></li>
-                <li>Null byte: <code>shell.php%00.jpg</code></li>
-                <li>Unicode: <code>shell.php;.jpg</code></li>
+                <li>Null byte injection: <code>shell.php%00.jpg</code></li>
             </ul>
         </div>
     </div>
