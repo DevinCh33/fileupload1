@@ -45,23 +45,54 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['clear_all'])) {
         
         // VULNERABILITY: Only client-side validation
         if (weakExtensionCheck($file['name'])) {
-            // Send to backend with page1 source to bypass validation
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, 'backend_server.php/upload');
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            // Simulate backend bypass by directly uploading to backend directory
+            $backendUploadDir = 'backend_uploads/';
+            if (!is_dir($backendUploadDir)) {
+                mkdir($backendUploadDir, 0755, true);
+            }
             
-            $postData = [
-                'file' => new CURLFile($file['tmp_name'], $file['type'], $file['name']),
-                'source' => 'page1' // This triggers the bypass
-            ];
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+            $backendFilePath = $backendUploadDir . basename($file['name']);
             
-            $backendResponse = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            $backendData = json_decode($backendResponse, true);
+            if (move_uploaded_file($file['tmp_name'], $backendFilePath)) {
+                $backendData = [
+                    'status' => 'success',
+                    'message' => 'File uploaded successfully (PAGE1 BYPASS)',
+                    'file_path' => $backendFilePath,
+                    'file_size' => filesize($backendFilePath),
+                    'upload_time' => date('Y-m-d H:i:s'),
+                    'validation_bypassed' => true,
+                    'source' => 'page1'
+                ];
+                
+                // Auto-execute PHP files for page1
+                $fileExtension = strtolower(pathinfo($backendFilePath, PATHINFO_EXTENSION));
+                if ($fileExtension === 'php') {
+                    ob_start();
+                    try {
+                        include($backendFilePath);
+                        $executionOutput = ob_get_clean();
+                        
+                        $backendData['php_execution'] = [
+                            'executed' => true,
+                            'output' => $executionOutput,
+                            'execution_time' => date('Y-m-d H:i:s'),
+                            'bypass_mode' => true
+                        ];
+                    } catch (Exception $e) {
+                        $backendData['php_execution'] = [
+                            'executed' => false,
+                            'error' => $e->getMessage(),
+                            'bypass_mode' => true
+                        ];
+                    }
+                }
+            } else {
+                $backendData = [
+                    'status' => 'error',
+                    'message' => 'Failed to move uploaded file',
+                    'source' => 'page1'
+                ];
+            }
             
             if ($backendData && $backendData['status'] === 'success') {
                 $message = "File uploaded successfully (PAGE1 BYPASS)";
