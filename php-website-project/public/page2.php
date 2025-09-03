@@ -28,34 +28,63 @@ function get_mime_type_safe($path) {
 // Upload handling: forward to backend for validation
 $upload_message = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
-    if (!function_exists('curl_init')) {
-        $upload_message = 'Server cannot forward to backend (cURL missing). Enable php-curl.';
-    } else {
-        $file = $_FILES['file'];
+    $file = $_FILES['file'];
+    $backendUrl = 'backend_server.php/upload';
+
+    if (function_exists('curl_init')) {
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'backend_server.php/upload');
+        curl_setopt($ch, CURLOPT_URL, $backendUrl);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        
         $postData = [
             'file' => new CURLFile($file['tmp_name'], $file['type'], $file['name']),
             'source' => 'page2'
         ];
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-        
         $backendResponse = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        
-        $backendData = json_decode($backendResponse, true);
-        if (is_array($backendData) && ($backendData['status'] ?? '') === 'success') {
-            $upload_message = 'File uploaded successfully (validated by backend).';
-            // redirect to viewer for convenience
-            header('Location: page2.php?doc=' . urlencode(basename($file['name'])));
-            exit;
-        } else {
-            $upload_message = 'Upload failed: ' . htmlspecialchars($backendData['message'] ?? 'Backend error');
+    } else {
+        // Fallback: use PHP streams to POST multipart/form-data (requires allow_url_fopen)
+        $boundary = '----P2Boundary' . bin2hex(random_bytes(8));
+        $eol = "\r\n";
+        $multipartBody = '';
+        // source field
+        $multipartBody .= '--' . $boundary . $eol;
+        $multipartBody .= 'Content-Disposition: form-data; name="source"' . $eol . $eol . 'page2' . $eol;
+        // file field
+        $filename = $file['name'];
+        $mime = $file['type'] ?: 'application/octet-stream';
+        $multipartBody .= '--' . $boundary . $eol;
+        $multipartBody .= 'Content-Disposition: form-data; name="file"; filename="' . str_replace('"', '"', $filename) . '"' . $eol;
+        $multipartBody .= 'Content-Type: ' . $mime . $eol . $eol;
+        $multipartBody .= file_get_contents($file['tmp_name']) . $eol;
+        $multipartBody .= '--' . $boundary . '--' . $eol;
+
+        $opts = [
+            'http' => [
+                'method' => 'POST',
+                'header' => 'Content-Type: multipart/form-data; boundary=' . $boundary . $eol . 'Content-Length: ' . strlen($multipartBody),
+                'content' => $multipartBody,
+                'ignore_errors' => true
+            ]
+        ];
+        $context = stream_context_create($opts);
+        $backendResponse = @file_get_contents($backendUrl, false, $context);
+        $httpCode = 0;
+        if (isset($http_response_header) && preg_match('#\s(\d{3})\s#', $http_response_header[0] ?? '', $m)) {
+            $httpCode = (int)$m[1];
         }
+    }
+
+    $backendData = json_decode($backendResponse, true);
+    if (is_array($backendData) && ($backendData['status'] ?? '') === 'success') {
+        $upload_message = 'File uploaded successfully (validated by backend).';
+        header('Location: page2.php?doc=' . urlencode(basename($file['name'])));
+        exit;
+    } else {
+        $msg = is_array($backendData) ? ($backendData['message'] ?? 'Backend error') : 'Backend unreachable';
+        $upload_message = 'Upload failed: ' . htmlspecialchars($msg);
     }
 }
 
