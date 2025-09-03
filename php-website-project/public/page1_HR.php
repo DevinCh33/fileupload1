@@ -1,5 +1,6 @@
 <?php
-// page1.php - Minimal safeguards against file upload vulnerabilities
+// page1.php - MINIMAL safeguards with INTENTIONAL vulnerabilities for practice
+// This page is designed to be exploitable for educational purposes
 
 $uploadDir = 'uploads/';
 $uploadedFile = '';
@@ -10,6 +11,18 @@ $fileInfo = '';
 if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0755, true);
 }
+
+// VULNERABILITY 1: Weak file extension validation
+function weakExtensionCheck($filename) {
+    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    // Only checks basic extensions, easily bypassed
+    $allowed = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'php', 'txt', 'log', 'html', 'htm'];
+    return in_array($ext, $allowed);
+}
+
+// VULNERABILITY 2: No MIME type validation
+// VULNERABILITY 3: No file content validation
+// VULNERABILITY 4: No file size limits
 
 // Handle clear all images
 if (isset($_POST['clear_all'])) {
@@ -25,7 +38,7 @@ if (isset($_POST['clear_all'])) {
     $message = "Successfully deleted $deletedCount files from uploads directory.";
 }
 
-// Handle test payload execution
+// VULNERABILITY 5: Test payload execution (auto-execution)
 if (isset($_GET['test_payload'])) {
     $testPayload = $_GET['test_payload'];
     $fileInfo = "<h3>Testing Payload Execution:</h3>";
@@ -53,7 +66,7 @@ if (isset($_GET['test_payload'])) {
     unlink($tempFile);
 }
 
-// Handle file execution (for vulnerability practice)
+// VULNERABILITY 6: Manual file execution
 if (isset($_GET['execute']) && !empty($_GET['execute'])) {
     $fileToExecute = $uploadDir . basename($_GET['execute']);
     if (file_exists($fileToExecute)) {
@@ -96,24 +109,56 @@ if (isset($_GET['execute']) && !empty($_GET['execute'])) {
     }
 }
 
+// VULNERABILITY 7: Weak upload validation
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['clear_all'])) {
     $uploadFile = $uploadDir . basename($_FILES['userfile']['name']);
-    $fileType = strtolower(pathinfo($uploadFile, PATHINFO_EXTENSION));
-
-    // Check file type (only allow certain types)
-    $allowedTypes = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'php', 'txt', 'log', 'html', 'htm'];
-    if (in_array($fileType, $allowedTypes)) {
+    
+    // VULNERABILITY: Only checks extension, no other validation
+    if (weakExtensionCheck($_FILES['userfile']['name'])) {
         if (move_uploaded_file($_FILES['userfile']['tmp_name'], $uploadFile)) {
             $message = "File is valid, and was successfully uploaded.";
             $uploadedFile = $uploadFile;
             
-            // Analyze uploaded file
-            $fileInfo = analyzeFile($uploadFile);
+            // VULNERABILITY 8: Auto-execution of uploaded PHP files
+            $fileType = strtolower(pathinfo($uploadFile, PATHINFO_EXTENSION));
+            if ($fileType == 'php') {
+                $fileInfo = "<h3>⚠️ PHP File Uploaded - Auto-Execution Test:</h3>";
+                $fileInfo .= "<p><strong>File:</strong> " . htmlspecialchars(basename($uploadFile)) . "</p>";
+                
+                // Auto-execute PHP files (CRITICAL VULNERABILITY)
+                ob_start();
+                try {
+                    include($uploadFile);
+                    $output = ob_get_clean();
+                    $fileInfo .= "<h4>Auto-Execution Output:</h4><pre>" . htmlspecialchars($output) . "</pre>";
+                    
+                    if (empty($output)) {
+                        $fileInfo .= "<p><strong>Note:</strong> PHP file executed but no output generated.</p>";
+                    }
+                } catch (Exception $e) {
+                    $fileInfo .= "<h4>Auto-Execution Error:</h4><pre>" . htmlspecialchars($e->getMessage()) . "</pre>";
+                }
+            } else {
+                // Analyze uploaded file
+                $fileInfo = analyzeFile($uploadFile);
+            }
         } else {
             $message = "Possible file upload attack!";
         }
     } else {
         $message = "File type not allowed.";
+    }
+}
+
+// VULNERABILITY 9: File inclusion in page processing
+// This simulates a common vulnerability where uploaded files are included
+if (isset($_GET['include_file']) && !empty($_GET['include_file'])) {
+    $fileToInclude = $uploadDir . basename($_GET['include_file']);
+    if (file_exists($fileToInclude)) {
+        ob_start();
+        include($fileToInclude);
+        $includedOutput = ob_get_clean();
+        $fileInfo = "<h3>File Inclusion Result:</h3><pre>" . htmlspecialchars($includedOutput) . "</pre>";
     }
 }
 
@@ -138,6 +183,7 @@ function analyzeFile($filePath) {
         if ($fileType == 'php') {
             $analysis .= "<p><strong>⚠️ PHP File Detected!</strong> This file can be executed.</p>";
             $analysis .= "<a href='?execute=" . urlencode(basename($filePath)) . "' class='execute-btn'>Execute PHP File</a>";
+            $analysis .= "<a href='?include_file=" . urlencode(basename($filePath)) . "' class='execute-btn'>Include File</a>";
         }
     }
     
@@ -169,7 +215,7 @@ if (is_dir($uploadDir)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Page 1 - File Upload Vulnerability Lab</title>
+    <title>Page 1 - WEAK File Upload (Vulnerable)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -204,6 +250,12 @@ if (is_dir($uploadDir)) {
             background: #fff3cd;
             color: #856404;
             border: 1px solid #ffeaa7;
+        }
+        .danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            font-weight: bold;
         }
         .uploaded-image {
             max-width: 100%;
@@ -273,8 +325,8 @@ if (is_dir($uploadDir)) {
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .vulnerability-info {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
             padding: 15px;
             border-radius: 8px;
             margin: 15px 0;
@@ -299,15 +351,35 @@ if (is_dir($uploadDir)) {
             background: #17a2b8;
             color: white;
         }
+        .vuln-list {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
     </style>
 </head>
 <body>
-    <h1>File Upload Vulnerability Lab - Page 1</h1>
+    <h1>🚨 WEAK File Upload - Page 1 (Vulnerable)</h1>
     
     <div class="vulnerability-info">
-        <h3>⚠️ Vulnerability Practice Area</h3>
-        <p>This page allows various file types including PHP files for vulnerability testing. 
-        Be careful with uploaded files as they may contain malicious code!</p>
+        <h3>⚠️ CRITICAL VULNERABILITIES PRESENT</h3>
+        <p><strong>This page is intentionally vulnerable for educational purposes!</strong></p>
+        <p>PHP files are AUTO-EXECUTED upon upload. This is a critical security flaw!</p>
+    </div>
+    
+    <div class="vuln-list">
+        <h4>🔍 Vulnerabilities Implemented:</h4>
+        <ul>
+            <li><strong>Weak Extension Validation:</strong> Only checks basic file extensions</li>
+            <li><strong>No MIME Type Validation:</strong> Accepts any Content-Type</li>
+            <li><strong>No File Content Validation:</strong> No magic number checking</li>
+            <li><strong>No File Size Limits:</strong> Unlimited upload size</li>
+            <li><strong>Auto-Execution:</strong> PHP files execute immediately upon upload</li>
+            <li><strong>File Inclusion:</strong> Direct include() of uploaded files</li>
+            <li><strong>Path Traversal:</strong> No path sanitization</li>
+        </ul>
     </div>
     
     <div class="upload-form">
@@ -326,6 +398,17 @@ if (is_dir($uploadDir)) {
             <a href="?test_payload=<?php echo urlencode('<?php echo "Current time: " . date("Y-m-d H:i:s"); ?>'); ?>" class="execute-btn">Test: Current Time</a>
             <a href="?test_payload=<?php echo urlencode('<?php system("whoami"); ?>'); ?>" class="execute-btn">Test: System Command</a>
             <a href="?test_payload=<?php echo urlencode('<?php phpinfo(); ?>'); ?>" class="execute-btn">Test: PHP Info</a>
+        </div>
+        
+        <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 4px;">
+            <h4>🔧 Exploitation Tips:</h4>
+            <p><strong>Try these bypass techniques:</strong></p>
+            <ul style="font-size: 12px;">
+                <li>Double extension: <code>shell.jpg.php</code></li>
+                <li>Case manipulation: <code>shell.PHP</code></li>
+                <li>Null byte: <code>shell.php%00.jpg</code></li>
+                <li>Unicode: <code>shell.php;.jpg</code></li>
+            </ul>
         </div>
     </div>
 
@@ -369,6 +452,7 @@ if (is_dir($uploadDir)) {
                     <div class="file-actions">
                         <?php if ($file['isExecutable']): ?>
                             <a href="?execute=<?php echo urlencode($file['name']); ?>" class="execute-btn">Execute</a>
+                            <a href="?include_file=<?php echo urlencode($file['name']); ?>" class="execute-btn">Include</a>
                         <?php endif; ?>
                     </div>
                 </div>
