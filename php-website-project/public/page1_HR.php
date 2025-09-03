@@ -42,6 +42,7 @@ if (isset($_POST['clear_all'])) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['clear_all'])) {
     if (isset($_FILES['userfile'])) {
         $file = $_FILES['userfile'];
+        $originalName = $file['name'];
         
         // VULNERABILITY: Only client-side validation
         if (weakExtensionCheck($file['name'])) {
@@ -102,6 +103,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['clear_all'])) {
                 $fileInfo = "<h3>Backend Response (PAGE1 BYPASS):</h3>";
                 $fileInfo .= "<pre>" . htmlspecialchars(json_encode($backendData, JSON_PRETTY_PRINT)) . "</pre>";
                 $fileInfo .= "<p><a href='" . htmlspecialchars($backendData['file_path']) . "' target='_blank'>Open uploaded file</a></p>";
+                // UNSAFE: Render original filename in multiple sinks to allow XSS via filename
+                $fileInfo .= '<h4>Unsafe filename render (for XSS via name)</h4>';
+                // Attribute injection sink via onerror
+                $fileInfo .= '<img src="x" alt="x" onerror="' . $originalName . '">';
+                // Text/HTML sink
+                $fileInfo .= '<div id="unsafe-name">' . $originalName . '</div>';
+                // Attribute value without quotes (another vector)
+                $fileInfo .= '<a id=unsafe-link href=' . $originalName . '>Open by name</a>';
+                // Inline script using the name
+                $fileInfo .= '<script>document.querySelector("#unsafe-name").setAttribute("data-name", "' . $originalName . '");</script>';
                 
                 if (isset($backendData['php_execution'])) {
                     // Intentionally not escaping to allow DOM-based payloads to manifest
