@@ -14,12 +14,43 @@ if (!is_dir($uploadDir)) {
 // Handle clear all images
 if (isset($_POST['clear_all'])) {
     $files = scandir($uploadDir);
+    $deletedCount = 0;
     foreach ($files as $file) {
         if ($file != '.' && $file != '..') {
-            unlink($uploadDir . $file);
+            if (unlink($uploadDir . $file)) {
+                $deletedCount++;
+            }
         }
     }
-    $message = "All uploaded files have been cleared.";
+    $message = "Successfully deleted $deletedCount files from uploads directory.";
+}
+
+// Handle test payload execution
+if (isset($_GET['test_payload'])) {
+    $testPayload = $_GET['test_payload'];
+    $fileInfo = "<h3>Testing Payload Execution:</h3>";
+    $fileInfo .= "<h4>Payload:</h4><pre>" . htmlspecialchars($testPayload) . "</pre>";
+    
+    // Create a temporary file with the payload
+    $tempFile = $uploadDir . 'test_payload_' . time() . '.php';
+    file_put_contents($tempFile, $testPayload);
+    
+    // Execute the payload
+    ob_start();
+    try {
+        include($tempFile);
+        $output = ob_get_clean();
+        $fileInfo .= "<h4>Execution Result:</h4><pre>" . htmlspecialchars($output) . "</pre>";
+        
+        if (empty($output)) {
+            $fileInfo .= "<p><strong>Note:</strong> No output generated. Payload may be executing silently.</p>";
+        }
+    } catch (Exception $e) {
+        $fileInfo .= "<h4>Execution Error:</h4><pre>" . htmlspecialchars($e->getMessage()) . "</pre>";
+    }
+    
+    // Clean up temp file
+    unlink($tempFile);
 }
 
 // Handle file execution (for vulnerability practice)
@@ -29,15 +60,39 @@ if (isset($_GET['execute']) && !empty($_GET['execute'])) {
         $fileType = strtolower(pathinfo($fileToExecute, PATHINFO_EXTENSION));
         if ($fileType == 'php') {
             // Execute PHP files (for vulnerability practice)
+            $fileInfo = "<h3>Executing PHP File: " . htmlspecialchars(basename($fileToExecute)) . "</h3>";
+            
+            // Show file content first
+            $content = file_get_contents($fileToExecute);
+            $fileInfo .= "<h4>File Content:</h4><pre>" . htmlspecialchars($content) . "</pre>";
+            
+            // Execute the file and capture output
             ob_start();
-            include($fileToExecute);
-            $output = ob_get_clean();
-            $fileInfo = "<h3>Executed PHP File Output:</h3><pre>" . htmlspecialchars($output) . "</pre>";
+            try {
+                include($fileToExecute);
+                $output = ob_get_clean();
+                $fileInfo .= "<h4>Execution Output:</h4><pre>" . htmlspecialchars($output) . "</pre>";
+                
+                if (empty($output)) {
+                    $fileInfo .= "<p><strong>Note:</strong> No output was generated. The file may be executing silently or waiting for input.</p>";
+                }
+            } catch (Exception $e) {
+                $fileInfo .= "<h4>Execution Error:</h4><pre>" . htmlspecialchars($e->getMessage()) . "</pre>";
+            }
+            
+            // Add debugging information
+            $fileInfo .= "<h4>Debug Info:</h4>";
+            $fileInfo .= "<p><strong>File Permissions:</strong> " . substr(sprintf('%o', fileperms($fileToExecute)), -4) . "</p>";
+            $fileInfo .= "<p><strong>File Size:</strong> " . filesize($fileToExecute) . " bytes</p>";
+            $fileInfo .= "<p><strong>PHP Version:</strong> " . phpversion() . "</p>";
+            
         } elseif (in_array($fileType, ['txt', 'log'])) {
             // Display text files
             $content = file_get_contents($fileToExecute);
             $fileInfo = "<h3>Text File Content:</h3><pre>" . htmlspecialchars($content) . "</pre>";
         }
+    } else {
+        $fileInfo = "<h3>Error:</h3><p>File not found: " . htmlspecialchars($fileToExecute) . "</p>";
     }
 }
 
@@ -264,6 +319,14 @@ if (is_dir($uploadDir)) {
         <form method="POST" style="display: inline;">
             <button type="submit" name="clear_all" class="clear-btn">Clear All Files</button>
         </form>
+        
+        <div style="margin-top: 15px; padding: 10px; background: #e9ecef; border-radius: 4px;">
+            <h4>Quick Test Payloads:</h4>
+            <a href="?test_payload=<?php echo urlencode('<?php echo "Hello World!"; ?>'); ?>" class="execute-btn">Test: Hello World</a>
+            <a href="?test_payload=<?php echo urlencode('<?php echo "Current time: " . date("Y-m-d H:i:s"); ?>'); ?>" class="execute-btn">Test: Current Time</a>
+            <a href="?test_payload=<?php echo urlencode('<?php system("whoami"); ?>'); ?>" class="execute-btn">Test: System Command</a>
+            <a href="?test_payload=<?php echo urlencode('<?php phpinfo(); ?>'); ?>" class="execute-btn">Test: PHP Info</a>
+        </div>
     </div>
 
     <?php if ($message): ?>
