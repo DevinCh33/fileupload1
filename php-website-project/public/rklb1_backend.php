@@ -9,27 +9,10 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 // Backend configuration
 $uploadDir = 'uploads/';
-$logFile = 'rklb1_logs/backend.log';
 
-// Ensure directories exist
+// Ensure upload directory exists
 if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0755, true);
-}
-if (!is_dir('rklb1_logs')) {
-    mkdir('rklb1_logs', 0755, true);
-}
-
-// Initialize log file
-if (!file_exists($logFile)) {
-    file_put_contents($logFile, "RKLB1 Backend Started: " . date('Y-m-d H:i:s') . "\n");
-}
-
-// Log function
-function logRKLB1($message, $level = 'INFO') {
-    global $logFile;
-    $timestamp = date('Y-m-d H:i:s');
-    $logEntry = "[$timestamp] [$level] $message\n";
-    file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
 }
 
 // Function to extract metadata from files
@@ -148,20 +131,12 @@ if ($requestMethod === 'POST') {
                 $fileName = basename($file['name']);
                 $filePath = $uploadDir . $fileName;
                 
-                logRKLB1("File upload attempt: $fileName");
-                
                 // Process filename for "FINANCIAL_" requirement
                 $filenameAnalysis = processFilename($fileName);
-                logRKLB1("Filename analysis: " . json_encode($filenameAnalysis));
-                
                 // NO VALIDATION - Accept any file
                 if (move_uploaded_file($file['tmp_name'], $filePath)) {
-                    logRKLB1("File uploaded successfully: $fileName");
-                    
                     // Extract metadata
                     $metadata = extractMetadata($filePath);
-                    logRKLB1("Metadata extracted: " . json_encode($metadata));
-                    
                     $response = [
                         'status' => 'success',
                         'message' => 'File uploaded successfully (NO VALIDATION)',
@@ -180,7 +155,6 @@ if ($requestMethod === 'POST') {
                         'message' => 'Failed to move uploaded file',
                         'filename_analysis' => $filenameAnalysis
                     ];
-                    logRKLB1("File upload failed: $fileName");
                 }
                 
             } else {
@@ -202,8 +176,6 @@ if ($requestMethod === 'POST') {
                     }
                 }
             }
-            
-            logRKLB1("Cleared $clearedCount files from upload directory");
             
             $response = [
                 'status' => 'success',
@@ -233,7 +205,7 @@ if ($requestMethod === 'POST') {
             'file_clearing' => true
         ],
         'upload_directory' => realpath($uploadDir),
-        'log_file' => realpath($logFile),
+    // 'log_file' => realpath($logFile),
         'warning' => 'This backend is intentionally vulnerable for educational purposes'
     ];
 }
