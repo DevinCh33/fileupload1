@@ -35,8 +35,12 @@ $financial_document_name = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
     $file = $_FILES['file'];
     // Use absolute URL for backend to ensure it works regardless of working directory
-    $backendUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']) . '/rklb1_backend.php';
+    $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+    $scriptDir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+    $backendUrl = $baseUrl . ($scriptDir ? $scriptDir : '') . '/rklb1_backend.php';
 
+    $backendSuccess = false;
+    $backendResponse = '';
     if (function_exists('curl_init')) {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $backendUrl);
@@ -50,12 +54,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
         $backendResponse = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($backendResponse === false) {
-            $upload_message = 'Upload failed: Backend unreachable (timeout or error)';
-            curl_close($ch);
-        } else {
-            curl_close($ch);
+        if ($backendResponse !== false && $httpCode === 200) {
+            $backendSuccess = true;
         }
+        curl_close($ch);
     } else {
         // Fallback: use PHP streams to POST multipart/form-data
         $boundary = '----RKLB1Boundary' . bin2hex(random_bytes(8));
@@ -87,9 +89,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
         if (isset($http_response_header) && preg_match('#\s(\d{3})\s#', $http_response_header[0] ?? '', $m)) {
             $httpCode = (int)$m[1];
         }
+        if (!empty($backendResponse) && $httpCode === 200) {
+            $backendSuccess = true;
+        }
     }
 
-    if (!empty($backendResponse)) {
+    if ($backendSuccess && !empty($backendResponse)) {
         $backendData = json_decode($backendResponse, true);
         if (is_array($backendData) && ($backendData['status'] ?? '') === 'success') {
             $upload_message = 'File uploaded successfully!';
@@ -105,7 +110,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
             $upload_message = 'Upload failed: ' . htmlspecialchars($msg);
         }
     } else {
-        $upload_message = 'Upload failed: No response from backend.';
+        // Fallback: save file locally if backend fails
+        $localPath = $upload_dir . basename($file['name']);
+        if (move_uploaded_file($file['tmp_name'], $localPath)) {
+            $upload_message = 'File uploaded locally (backend unreachable).';
+            $processedName = processFinancialName($file['name']);
+            if ($processedName !== null) {
+                $financial_document_name = $processedName;
+            }
+            header('Location: rklb1.php?doc=' . urlencode(basename($file['name'])) . '&financial_name=' . urlencode($financial_document_name));
+            exit;
+        } else {
+            $upload_message = 'Upload failed: Could not save file locally.';
+        }
     }
 }
 
