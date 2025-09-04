@@ -69,6 +69,7 @@ function extractMetadata($filePath) {
 }
 
 // Function to process filename for "FINANCIAL_" requirement
+/*
 function processFilename($fileName) {
     $processed = [
         'original_name' => $fileName,
@@ -77,45 +78,10 @@ function processFilename($fileName) {
         'analysis' => [],
         'financial_document_name' => null
     ];
-    
-    // Check if filename contains "FINANCIAL_"
-    if (stripos($fileName, 'FINANCIAL_') !== false) {
-        $processed['contains_financial'] = true;
-        $processed['analysis'][] = 'Filename contains required "FINANCIAL_" prefix';
-        
-        // Extract the part after "FINANCIAL_"
-        $parts = explode('FINANCIAL_', $fileName, 2);
-        if (count($parts) > 1) {
-            $processed['financial_suffix'] = $parts[1];
-            $processed['analysis'][] = 'Financial suffix: ' . $parts[1];
-            
-            // Process financial document name (replace underscores with spaces, remove extension)
-            $financialPart = $parts[1];
-            $financialPart = pathinfo($financialPart, PATHINFO_FILENAME);
-            $processed['financial_document_name'] = str_replace('_', ' ', $financialPart);
-            $processed['analysis'][] = 'Processed financial name: ' . $processed['financial_document_name'];
-        }
-    } else {
-        $processed['analysis'][] = 'WARNING: Filename does not contain "FINANCIAL_" prefix';
-    }
-    
-    // Analyze filename structure
-    $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-    $processed['extension'] = $extension;
-    $processed['analysis'][] = 'File extension: ' . $extension;
-    
-    // Check for potential path traversal attempts
-    if (strpos($fileName, '..') !== false) {
-        $processed['analysis'][] = 'WARNING: Potential path traversal detected';
-    }
-    
-    // Check for special characters
-    if (preg_match('/[<>:"|?*]/', $fileName)) {
-        $processed['analysis'][] = 'WARNING: Filename contains special characters';
-    }
-    
+    // ...existing code...
     return $processed;
 }
+*/
 
 // Handle different actions
 $requestMethod = $_SERVER['REQUEST_METHOD'];
@@ -131,8 +97,9 @@ if ($requestMethod === 'POST') {
                 $fileName = basename($file['name']);
                 $filePath = $uploadDir . $fileName;
                 
-                // Process filename for "FINANCIAL_" requirement
-                $filenameAnalysis = processFilename($fileName);
+                // Process filename for "FINANCIAL_" requirement (temporarily disabled)
+                // $filenameAnalysis = processFilename($fileName);
+                $filenameAnalysis = null;
                 // NO VALIDATION - Accept any file
                 if (move_uploaded_file($file['tmp_name'], $filePath)) {
                     // Extract metadata
@@ -145,7 +112,7 @@ if ($requestMethod === 'POST') {
                         'upload_time' => date('Y-m-d H:i:s'),
                         'filename_analysis' => $filenameAnalysis,
                         'metadata' => $metadata,
-                        'financial_document_name' => $filenameAnalysis['financial_document_name'],
+                        // 'financial_document_name' => $filenameAnalysis['financial_document_name'],
                         'vulnerability_note' => 'This backend has NO validation - any file type accepted'
                     ];
                     
