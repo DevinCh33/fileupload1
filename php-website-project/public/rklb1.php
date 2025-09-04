@@ -1,7 +1,7 @@
 <?php
 // rklb1.php - File upload vulnerability lab for accessing NASDAQ_RKLB_2024.pdf
 session_start();
-$upload_dir = 'rklb1_uploads/';
+$upload_dir = 'uploads/';
 
 // Ensure upload directory exists
 if (!is_dir($upload_dir)) {
