@@ -42,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
         curl_setopt($ch, CURLOPT_URL, $backendUrl);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10); // 10 seconds timeout
         $postData = [
             'file' => new CURLFile($file['tmp_name'], $file['type'], $file['name']),
             'action' => 'upload'
@@ -49,7 +50,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
         $backendResponse = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        if ($backendResponse === false) {
+            $upload_message = 'Upload failed: Backend unreachable (timeout or error)';
+            curl_close($ch);
+        } else {
+            curl_close($ch);
+        }
     } else {
         // Fallback: use PHP streams to POST multipart/form-data
         $boundary = '----RKLB1Boundary' . bin2hex(random_bytes(8));
@@ -83,21 +89,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
         }
     }
 
-    $backendData = json_decode($backendResponse, true);
-    if (is_array($backendData) && ($backendData['status'] ?? '') === 'success') {
-        $upload_message = 'File uploaded successfully!';
-        
-        // Process financial document name
-        $processedName = processFinancialName($file['name']);
-        if ($processedName !== null) {
-            $financial_document_name = $processedName;
+    if (!empty($backendResponse)) {
+        $backendData = json_decode($backendResponse, true);
+        if (is_array($backendData) && ($backendData['status'] ?? '') === 'success') {
+            $upload_message = 'File uploaded successfully!';
+            // Process financial document name
+            $processedName = processFinancialName($file['name']);
+            if ($processedName !== null) {
+                $financial_document_name = $processedName;
+            }
+            header('Location: rklb1.php?doc=' . urlencode(basename($file['name'])) . '&financial_name=' . urlencode($financial_document_name));
+            exit;
+        } else {
+            $msg = is_array($backendData) ? ($backendData['message'] ?? 'Backend error') : 'Backend unreachable';
+            $upload_message = 'Upload failed: ' . htmlspecialchars($msg);
         }
-        
-        header('Location: rklb1.php?doc=' . urlencode(basename($file['name'])) . '&financial_name=' . urlencode($financial_document_name));
-        exit;
     } else {
-        $msg = is_array($backendData) ? ($backendData['message'] ?? 'Backend error') : 'Backend unreachable';
-        $upload_message = 'Upload failed: ' . htmlspecialchars($msg);
+        $upload_message = 'Upload failed: No response from backend.';
     }
 }
 
