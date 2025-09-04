@@ -8,7 +8,7 @@ header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 // Backend configuration
-$uploadDir = 'rklb1_uploads/';
+$uploadDir = 'uploads';
 $logFile = 'rklb1_logs/backend.log';
 
 // Ensure directories exist
