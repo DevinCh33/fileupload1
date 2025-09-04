@@ -31,9 +31,11 @@ function processFinancialName($fileName) {
 // Upload handling: forward to specialized backend with NO validation
 $upload_message = '';
 $financial_document_name = '';
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
     $file = $_FILES['file'];
-    $backendUrl = 'rklb1_backend.php';
+    // Use absolute URL for backend to ensure it works regardless of working directory
+    $backendUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']) . '/rklb1_backend.php';
 
     if (function_exists('curl_init')) {
         $ch = curl_init();
@@ -101,7 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
 
 // Clear files functionality
 if (isset($_POST['clear_files'])) {
-    $backendUrl = 'rklb1_backend.php';
+    // Use absolute URL for backend to ensure it works regardless of working directory
+    $backendUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']) . '/rklb1_backend.php';
     
     if (function_exists('curl_init')) {
         $ch = curl_init();

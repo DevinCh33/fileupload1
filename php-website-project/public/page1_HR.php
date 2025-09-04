@@ -1,4 +1,4 @@
-<?php
+method="POST"<?php
 // page1.php - CLIENT-SIDE ONLY validation (easily bypassed)
 // This page bypasses all server-side validation for educational purposes
 
