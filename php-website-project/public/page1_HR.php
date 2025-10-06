@@ -150,6 +150,10 @@ function analyzeFile($filePath) {
             $analysis .= "<p><strong>⚠️ PHP File Detected!</strong> This file can be executed.</p>";
             $analysis .= "<a href='?execute=" . urlencode(basename($filePath)) . "' class='execute-btn'>Execute PHP File</a>";
             $analysis .= "<a href='?include_file=" . urlencode(basename($filePath)) . "' class='execute-btn'>Include File</a>";
+                header('Content-Type: application/pdf');
+    header('Content-Disposition: inline; filename="' . basename($filePath) . '"');
+    readfile($filePath);
+    exit;
         }
     }
     
