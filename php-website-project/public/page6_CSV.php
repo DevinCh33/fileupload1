@@ -1,8 +1,6 @@
 <?php
 // page6_CSV.php - CLIENT-SIDE ONLY validation with CSV/XLSX cell extraction
 // This page bypasses all server-side validation for educational purposes
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
 $uploadDir = 'uploads/';
 $uploadedFile = '';
@@ -42,7 +40,7 @@ function displayCSVCells($filePath) {
             if (($handle = fopen($filePath, 'r')) !== FALSE) {
                 $rowIndex = 0;
                 
-                while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
+                while (($data = fgetcsv($handle, 1000, ',', '"', '\\')) !== FALSE) {
                     $rowIndex++;
                     
                     // Row 19 (index starts at 1 for row numbering)
@@ -79,30 +77,34 @@ function displayCSVCells($filePath) {
                 
             } else {
                 // Fallback: Simple ZIP extraction for XLSX without PhpSpreadsheet
-                $zip = new ZipArchive;
-                if ($zip->open($filePath) === TRUE) {
-                    $xmlData = $zip->getFromName('xl/worksheets/sheet1.xml');
-                    $zip->close();
-                    
-                    if ($xmlData !== false) {
-                        $xml = simplexml_load_string($xmlData);
+                if (class_exists('ZipArchive')) {
+                    $zip = new ZipArchive;
+                    if ($zip->open($filePath) === TRUE) {
+                        $xmlData = $zip->getFromName('xl/worksheets/sheet1.xml');
+                        $zip->close();
                         
-                        // Register namespace
-                        $xml->registerXPathNamespace('ns', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
-                        
-                        // Find cells C19 and D19
-                        $c19Cells = $xml->xpath('//ns:c[@r="C19"]/ns:v');
-                        $d19Cells = $xml->xpath('//ns:c[@r="D19"]/ns:v');
-                        
-                        if (!empty($c19Cells)) {
-                            $c19_value = (string)$c19Cells[0];
+                        if ($xmlData !== false) {
+                            $xml = simplexml_load_string($xmlData);
+                            
+                            // Register namespace
+                            $xml->registerXPathNamespace('ns', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+                            
+                            // Find cells C19 and D19
+                            $c19Cells = $xml->xpath('//ns:c[@r="C19"]/ns:v');
+                            $d19Cells = $xml->xpath('//ns:c[@r="D19"]/ns:v');
+                            
+                            if (!empty($c19Cells)) {
+                                $c19_value = (string)$c19Cells[0];
+                            }
+                            if (!empty($d19Cells)) {
+                                $d19_value = (string)$d19Cells[0];
+                            }
                         }
-                        if (!empty($d19Cells)) {
-                            $d19_value = (string)$d19Cells[0];
-                        }
+                    } else {
+                        throw new Exception('Could not open XLSX file');
                     }
                 } else {
-                    throw new Exception('Could not open XLSX file');
+                    throw new Exception('XLSX support not available. Please install PhpSpreadsheet: composer require phpoffice/phpspreadsheet');
                 }
             }
         }
