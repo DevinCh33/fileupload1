@@ -16,7 +16,7 @@ if (!is_dir($uploadDir)) {
 function weakExtensionCheck($filename) {
     $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
     // Only checks basic extensions, easily bypassed
-    $allowed = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'php', 'txt', 'log', 'html', 'htm', 'csv'];
+    $allowed = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'php', 'txt', 'log', 'html', 'htm', 'csv','xlsx'];
     return in_array($ext, $allowed);
 }
 
@@ -24,7 +24,7 @@ function weakExtensionCheck($filename) {
 function displayCSVCells($filePath) {
     $fileType = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
     
-    if ($fileType !== 'csv') {
+    if ($fileType !== 'xlsx' && $fileType !== 'csv') {
         return '';
     }
     
