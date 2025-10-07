@@ -57,10 +57,13 @@ function displayCSVCells($filePath) {
             }
         } elseif ($fileType === 'xlsx') {
             // Check if PhpSpreadsheet is available
-            if (file_exists('vendor/autoload.php')) {
-                require 'vendor/autoload.php';
+            $phpSpreadsheetClass = 'PhpOffice\\PhpSpreadsheet\\IOFactory';
+            if (file_exists('vendor/autoload.php') && class_exists($phpSpreadsheetClass)) {
+                require_once 'vendor/autoload.php';
                 
-                $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader('Xlsx');
+                // Use dynamic class loading to avoid IDE errors when library not installed
+                $ioFactoryClass = $phpSpreadsheetClass;
+                $reader = $ioFactoryClass::createReader('Xlsx');
                 $spreadsheet = $reader->load($filePath);
                 $worksheet = $spreadsheet->getActiveSheet();
                 
