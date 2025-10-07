@@ -675,7 +675,7 @@ if (is_dir($uploadDir)) {
             const name = f.name || '';
             const size = typeof f.size === 'number' ? f.size : 0;
             const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
-            const allowed = ['jpg','jpeg','png','gif','pdf','csv'];
+            const allowed = ['jpg','jpeg','png','gif','pdf','csv','xlsx'];
             const maxSize = 5 * 1024 * 1024; // 5MB
             if (!allowed.includes(ext)) {
                 alert('Unsupported file type: ' + ext + '. Only images, PDFs, and CSV files are allowed.');
