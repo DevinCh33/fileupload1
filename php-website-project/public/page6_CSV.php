@@ -1,6 +1,8 @@
 <?php
 // page6_CSV.php - CLIENT-SIDE ONLY validation with CSV/XLSX cell extraction
 // This page bypasses all server-side validation for educational purposes
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 $uploadDir = 'uploads/';
 $uploadedFile = '';
