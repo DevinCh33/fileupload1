@@ -59,7 +59,7 @@ function validateFileType($file) {
 }
 
 function validateFileExtension($fileName) {
-    $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'pdf'];
+    $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'pdf','xlsx'];
     $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
     return in_array($extension, $allowedExtensions);
 }
