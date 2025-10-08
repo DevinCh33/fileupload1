@@ -2,7 +2,7 @@
 // page6_CSV.php - CLIENT-SIDE ONLY validation with CSV/XLSX cell extraction
 // This page bypasses all server-side validation for educational purposes
 
-$uploadDir = 'uploads/';
+$uploadDir = 'uploads/';                                                                                                                    
 $uploadedFile = '';
 $message = '';
 $fileInfo = '';
@@ -110,16 +110,15 @@ function displayCSVCells($filePath) {
         }
         
         $output .= '<p style="font-size: 18px; margin: 15px 0; padding: 10px; background: white; border-radius: 4px;">';
-        // UNSAFE: Not escaping to allow CSV injection demonstration
-        $output .= '<strong>Cash and cash equivalents for Q1 = ' . $c19_value . ', Q2 = ' . $d19_value . '</strong>';
+        $output .= '<strong>Cash and cash equivalents for Q1 = ' . htmlspecialchars($c19_value) . ', Q2 = ' . htmlspecialchars($d19_value) . '</strong>';
         $output .= '</p>';
         
-        // Optional: Show cell locations for clarity (UNSAFE RENDERING)
+        // Optional: Show cell locations for clarity
         $output .= '<div style="font-size: 12px; color: #666; margin-top: 10px; padding: 8px; background: #f5f5f5; border-radius: 4px;">';
         $output .= '<strong>Cell Details:</strong><br>';
         $output .= 'File Type: ' . strtoupper($fileType) . '<br>';
-        $output .= 'Cell C19 (Row 19, Column C): ' . $c19_value . '<br>';
-        $output .= 'Cell D19 (Row 19, Column D): ' . $d19_value;
+        $output .= 'Cell C19 (Row 19, Column C): ' . htmlspecialchars($c19_value) . '<br>';
+        $output .= 'Cell D19 (Row 19, Column D): ' . htmlspecialchars($d19_value);
         $output .= '</div>';
         
     } catch (Exception $e) {
